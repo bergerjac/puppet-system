@@ -55,6 +55,71 @@ For example:
 
 will ignore any configuration for system::packages and system::yumgroups.
 
+## Stages vs. dependencies
+
+By default, system uses stages to make sure everything is done in the right
+order. This order is shown below. Stages follow each other with no particular
+order within each stage unless shown otherwise by dependency-arrows:
+
+Stage first:
+
+* providers
+* schedules -> yumrepos
+* selbooleans
+
+Stage second:
+
+* yumgroups -> packages
+* groups -> groups::realize
+* users, groups::realize -> users::realize
+
+Stage third:
+
+* files
+
+Stage main:
+
+* augeas
+* crontabs
+* facts
+* hosts
+* limits
+* mail
+* network
+* services
+* sshd
+* sysconfig
+* sysctl
+
+Stage last:
+
+* execs
+* mounts
+* templates
+
+Setting the global parameter use_stages to false disables the use of stages.
+Standard dependencies will be used instead. These look as follows:
+
+    providers -> hosts, mail, mounts
+    schedules -> yumrepos, selbooleans, groups, users
+    + selbooleans, yumrepos -> yumgroups
+    | + yumgroups -> packages
+    |   + packages, users::realize -> files
+    |     + files -> augeas, crontabs, facts, hosts, limits, mail, network, services, sshd, sysconfig, sysctl
+    |       + augeas, crontabs, facts, hosts, limits, mail, network, services, sshd, sysconfig, sysctl -> execs, templates
+    |       + hosts, network, services -> mounts
+    + groups -> groups::realize
+    |   groups::realize -> users::realize
+    + users -> users::realize
+
+This way, conflicts and dependency cycles can be avoided when using other
+packages that do not employ stages or do use them in a different way (e.g.
+puppetlab's apt module).
+
+Example for setting the parameter:
+
+    system::use_stages: false
+
 ## augeas
 
 Apply changes to files using the augeas tool.  This enables simple
